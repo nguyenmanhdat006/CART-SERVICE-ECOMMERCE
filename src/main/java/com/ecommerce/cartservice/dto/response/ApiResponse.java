@@ -1,5 +1,6 @@
 package com.ecommerce.cartservice.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -9,11 +10,19 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(description = "Standard API response wrapper")
 public class ApiResponse<T> {
 
+    @Schema(description = "Indicates whether the request was successful", example = "true")
     private Boolean success;
+
+    @Schema(description = "Response message", example = "Operation completed successfully")
     private String message;
+
+    @Schema(description = "Response data payload")
     private T data;
+
+    @Schema(description = "Timestamp of the response")
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 
