@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: cart_user
       POSTGRES_PASSWORD: cart_password
     ports:
-      - "5433:5432"
+      - "5435:5432"
     volumes:
       - cart-postgres-data:/var/lib/postgresql/data
     networks:
