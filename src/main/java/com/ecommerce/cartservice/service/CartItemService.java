@@ -39,8 +39,10 @@ public class CartItemService {
         }
 
         // Check stock availability
-        if (!product.getInStock() || product.getStockQuantity() == null || product.getStockQuantity() < quantity) {
-            throw new BadRequestException("Product is out of stock or insufficient quantity available");
+        if (!hasSufficientStock(product, quantity)) {
+            log.warn("Stock check failed for product {}: requestedQuantity={}, stockQuantity={}",
+                    productId, quantity, product.getStockQuantity());
+            throw new BadRequestException("Product is out of stock");
         }
 
         // Check if item already exists
@@ -70,9 +72,10 @@ public class CartItemService {
             return cartItemRepository.save(existingItem);
         } else {
             // Check max items limit
+            int maxItemsLimit = maxItemsPerCart != null ? maxItemsPerCart : 50;
             Integer currentItemCount = cartItemRepository.getTotalItemsByCartId(cart.getId());
-            if (currentItemCount != null && currentItemCount >= maxItemsPerCart) {
-                throw new BadRequestException("Cart has reached maximum items limit of " + maxItemsPerCart);
+            if (currentItemCount != null && currentItemCount >= maxItemsLimit) {
+                throw new BadRequestException("Cart has reached maximum items limit of " + maxItemsLimit);
             }
 
             // Create new item
@@ -134,6 +137,12 @@ public class CartItemService {
         return cartItemRepository.findByCartId(cartId);
     }
 
+    public CartItem getCartItemById(UUID cartItemId) {
+        log.debug("Getting cart item by id: {}", cartItemId);
+        return cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
+    }
+
     public void validateCartItems(Cart cart) {
         log.debug("Validating cart items for cart: {}", cart.getId());
 
@@ -145,7 +154,7 @@ public class CartItemService {
                 ProductResponse product = productServiceClient.getProduct(item.getProductId());
 
                 // Check if product is still in stock
-                if (!product.getInStock() || product.getStockQuantity() == null) {
+                if (isOutOfStock(product)) {
                     log.warn("Product {} is out of stock, will be marked", item.getProductId());
                     continue;
                 }
@@ -176,6 +185,19 @@ public class CartItemService {
             cartItemRepository.saveAll(items);
             log.debug("Cart items validated and updated");
         }
+    }
+
+    private boolean hasSufficientStock(ProductResponse product, Integer quantity) {
+        if (product == null || quantity == null || quantity <= 0) {
+            return false;
+        }
+
+        Integer stockQuantity = product.getStockQuantity();
+        return stockQuantity != null && stockQuantity != 0;
+    }
+
+    private boolean isOutOfStock(ProductResponse product) {
+        return product == null || product.getStockQuantity() == null || product.getStockQuantity() <= 0;
     }
 }
 

@@ -53,7 +53,6 @@ Get current user's cart
         quantity: number;
         price: number;
         total: number;
-        inStock: boolean;
         createdAt: string;
       }
     ];
@@ -158,7 +157,6 @@ interface CartItem {
   quantity: number;
   price: number;
   total: number;
-  inStock: boolean;
   createdAt: string;
 }
 

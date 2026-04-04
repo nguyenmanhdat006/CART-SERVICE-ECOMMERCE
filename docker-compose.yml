@@ -1,24 +1,24 @@
 version: '3.8'
 
 services:
-  postgres-cart:
-    image: postgres:15-alpine
-    container_name: cart-postgres
-    environment:
-      POSTGRES_DB: cart_db
-      POSTGRES_USER: cart_user
-      POSTGRES_PASSWORD: cart_password
-    ports:
-      - "5435:5432"
-    volumes:
-      - cart-postgres-data:/var/lib/postgresql/data
-    networks:
-      - ecommerce-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cart_user -d cart_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+#  postgres-cart:
+#    image: postgres:15-alpine
+#    container_name: cart-postgres
+#    environment:
+#      POSTGRES_DB: cart_db
+#      POSTGRES_USER: cart_user
+#      POSTGRES_PASSWORD: cart_password
+#    ports:
+#      - "5435:5432"
+#    volumes:
+#      - cart-postgres-data:/var/lib/postgresql/data
+#    networks:
+#      - ecommerce-network
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U cart_user -d cart_db"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
 
   redis-cart:
     image: redis:7-alpine
