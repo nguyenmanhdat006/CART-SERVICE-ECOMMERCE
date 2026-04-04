@@ -39,8 +39,6 @@ public class CartItemResponse {
     @Schema(description = "Total price for this item (price * quantity)", example = "150.00")
     private BigDecimal total;
 
-    @Schema(description = "Whether the product is in stock", example = "true")
-    private Boolean inStock;
 
     @Schema(description = "Timestamp when the item was added to cart")
     private LocalDateTime createdAt;

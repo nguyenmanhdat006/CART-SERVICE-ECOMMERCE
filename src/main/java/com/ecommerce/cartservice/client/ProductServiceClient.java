@@ -1,5 +1,7 @@
 package com.ecommerce.cartservice.client;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ecommerce.cartservice.dto.response.ProductResponse;
 import com.ecommerce.cartservice.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -18,21 +20,37 @@ import java.util.Map;
 public class ProductServiceClient {
 
     private final WebClient productServiceWebClient;
+    private final ObjectMapper objectMapper;
 
     public ProductResponse getProduct(String productId) {
         try {
             log.debug("Fetching product with id: {}", productId);
 
-            return productServiceWebClient
+            JsonNode responseNode = productServiceWebClient
                     .get()
                     .uri("/api/products/{productId}", productId)
                     .retrieve()
-                    .bodyToMono(ProductResponse.class)
+                    .bodyToMono(JsonNode.class)
                     .doOnError(error -> log.error("Error fetching product {}: {}", productId, error.getMessage()))
                     .onErrorResume(error -> Mono.error(
                             new ResourceNotFoundException("Product not found with id: " + productId)
                     ))
                     .block();
+
+            if (responseNode == null) {
+                throw new ResourceNotFoundException("Product not found with id: " + productId);
+            }
+
+            // Support both direct product payload and wrapped { success, data } payload.
+            JsonNode productNode = responseNode.has("data") ? responseNode.get("data") : responseNode;
+            ProductResponse product = objectMapper.convertValue(productNode, ProductResponse.class);
+
+            if (product == null) {
+                throw new ResourceNotFoundException("Product not found with id: " + productId);
+            }
+
+            log.debug("Fetched product {} with stockQuantity={}", productId, product.getStockQuantity());
+            return product;
         } catch (Exception e) {
             log.error("Failed to fetch product {}: {}", productId, e.getMessage());
             throw new ResourceNotFoundException("Product not found with id: " + productId);
@@ -43,13 +61,20 @@ public class ProductServiceClient {
         try {
             log.debug("Checking stock for product {} with quantity {}", productId, quantity);
 
-            ProductResponse product = getProduct(productId);
-
-            if (product == null || !product.getInStock()) {
+            if (quantity == null || quantity <= 0) {
                 return false;
             }
 
-            return product.getStockQuantity() != null && product.getStockQuantity() >= quantity;
+            ProductResponse product = getProduct(productId);
+
+            if (product == null) {
+                return false;
+            }
+
+            Integer stockQuantity = product.getStockQuantity();
+            log.debug("Resolved stock for product {}: stockQuantity={}", productId, stockQuantity);
+
+            return stockQuantity != null && stockQuantity != 0;
         } catch (Exception e) {
             log.error("Failed to check stock for product {}: {}", productId, e.getMessage());
             return false;

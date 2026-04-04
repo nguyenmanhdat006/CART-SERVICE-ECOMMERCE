@@ -3,9 +3,9 @@ spring:
     name: cart-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5435/cart_db
-    username: cart_user
-    password: cart_password
+    url: jdbc:postgresql://localhost:5433/cart_db
+    username: admin
+    password: password
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -21,19 +21,6 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     open-in-view: false
-
-  data:
-    redis:
-      host: localhost
-      port: 6380
-      password:
-      timeout: 60000
-      jedis:
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 2
-          max-wait: -1ms
 
   security:
     oauth2:
@@ -69,7 +56,6 @@ services:
 # Cart Configuration
 cart:
   session-timeout-minutes: 30
-  redis-ttl-minutes: 60
   max-items-per-cart: 50
 
 # Actuator
@@ -87,6 +73,5 @@ logging:
   level:
     com.ecommerce.cartservice: DEBUG
     org.springframework.security: DEBUG
-    org.springframework.data.redis: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE

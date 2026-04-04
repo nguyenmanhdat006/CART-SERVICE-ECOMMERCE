@@ -9,8 +9,6 @@ import com.ecommerce.cartservice.entity.Cart;
 import com.ecommerce.cartservice.entity.CartItem;
 import com.ecommerce.cartservice.exception.ResourceNotFoundException;
 import com.ecommerce.cartservice.mapper.CartMapper;
-import com.ecommerce.cartservice.model.RedisCart;
-import com.ecommerce.cartservice.model.RedisCartItem;
 import com.ecommerce.cartservice.repository.CartRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +32,6 @@ public class CartService {
     private final CartRepository cartRepository;
     private final CartItemService cartItemService;
     private final CartMapper cartMapper;
-    private final RedisCartService redisCartService;
 
     private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -48,13 +45,6 @@ public class CartService {
     public CartResponse getCurrentCart() {
         String userId = getCurrentUserId();
         log.debug("Getting cart for user: {}", userId);
-
-        // Try to get from Redis first
-        RedisCart redisCart = redisCartService.getCart(userId);
-        if (redisCart != null) {
-            log.debug("Cart found in Redis cache for user: {}", userId);
-            // Still need to load from DB for full entity data
-        }
 
         // Load from DB
         Cart cart = cartRepository.findByUserIdAndStatus(userId, Cart.CartStatus.ACTIVE)
@@ -73,20 +63,11 @@ public class CartService {
             cartItemService.validateCartItems(cart);
         }
 
-        // Sync to Redis
-        syncToRedis(cart);
-
         return buildCartResponse(cart);
     }
 
     public CartResponse getGuestCart(String sessionId) {
         log.debug("Getting guest cart for session: {}", sessionId);
-
-        // Try Redis first
-        RedisCart redisCart = redisCartService.getCart(sessionId);
-        if (redisCart != null) {
-            log.debug("Guest cart found in Redis cache");
-        }
 
         // Load from DB
         Cart cart = cartRepository.findBySessionIdAndStatus(sessionId, Cart.CartStatus.ACTIVE)
@@ -101,7 +82,6 @@ public class CartService {
                     return cartRepository.save(newCart);
                 });
 
-        syncToRedis(cart);
         return buildCartResponse(cart);
     }
 
@@ -126,9 +106,6 @@ public class CartService {
         cart = cartRepository.findById(cart.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
-        // Update Redis cache
-        syncToRedis(cart);
-
         return buildCartResponse(cart);
     }
 
@@ -146,27 +123,19 @@ public class CartService {
         Cart cart = cartRepository.findById(item.getCart().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
-        // Update Redis
-        syncToRedis(cart);
-
         return buildCartResponse(cart);
     }
 
     public void removeCartItem(UUID itemId) {
         log.debug("Removing cart item: {}", itemId);
 
-        CartItem item = cartItemService.getCartItems(null).stream()
-                .filter(i -> i.getId().equals(itemId))
-                .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + itemId));
+        CartItem item = cartItemService.getCartItemById(itemId);
 
         UUID cartId = item.getCart().getId();
         cartItemService.removeItem(itemId);
 
-        // Update Redis
-        Cart cart = cartRepository.findById(cartId)
+        cartRepository.findById(cartId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
-        syncToRedis(cart);
     }
 
     public void clearCart() {
@@ -179,8 +148,6 @@ public class CartService {
         cart.clearItems();
         cartRepository.save(cart);
 
-        // Clear Redis cache
-        redisCartService.clearCart(userId);
     }
 
     public CartSummaryResponse getCartSummary() {
@@ -249,14 +216,10 @@ public class CartService {
 
         // Delete guest cart
         cartRepository.delete(guestCart);
-        redisCartService.deleteCart(guestSessionId);
 
         // Refresh user cart
         userCart = cartRepository.findById(userCart.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
-
-        // Update Redis
-        syncToRedis(userCart);
 
         return buildCartResponse(userCart);
     }
@@ -278,7 +241,6 @@ public class CartService {
         // Calculate item totals
         for (CartItemResponse itemResponse : response.getItems()) {
             itemResponse.setTotal(itemResponse.getPrice().multiply(BigDecimal.valueOf(itemResponse.getQuantity())));
-            itemResponse.setInStock(true); // TODO: Check actual stock status
         }
 
         return response;
@@ -290,33 +252,5 @@ public class CartService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private void syncToRedis(Cart cart) {
-        try {
-            String key = cart.getUserId().equals("guest") ? cart.getSessionId() : cart.getUserId();
-
-            List<RedisCartItem> redisItems = new ArrayList<>();
-            for (CartItem item : cart.getItems()) {
-                RedisCartItem redisItem = RedisCartItem.builder()
-                        .productId(item.getProductId())
-                        .productVariantId(item.getProductVariantId())
-                        .quantity(item.getQuantity())
-                        .price(item.getPrice())
-                        .productName(item.getProductName())
-                        .productImageUrl(item.getProductImageUrl())
-                        .build();
-                redisItems.add(redisItem);
-            }
-
-            RedisCart redisCart = RedisCart.builder()
-                    .key(key)
-                    .items(redisItems)
-                    .build();
-
-            redisCartService.saveCart(key, redisCart);
-            log.debug("Cart synced to Redis for key: {}", key);
-        } catch (Exception e) {
-            log.error("Error syncing cart to Redis: {}", e.getMessage());
-        }
-    }
 }
 
