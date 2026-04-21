@@ -199,5 +199,11 @@ public class CartItemService {
     private boolean isOutOfStock(ProductResponse product) {
         return product == null || product.getStockQuantity() == null || product.getStockQuantity() <= 0;
     }
+
+    public void deleteCartItemsByCartId(UUID cartId) {
+        log.debug("Deleting all cart items for cart: {}", cartId);
+        cartItemRepository.deleteByCartId(cartId);
+        log.debug("All cart items deleted for cart: {}", cartId);
+    }
 }
 

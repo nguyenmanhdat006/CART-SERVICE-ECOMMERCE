@@ -29,14 +29,14 @@ public class Cart {
     @Column
     private String sessionId;
 
-    @Column(nullable = false, length = 20)
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private CartStatus status = CartStatus.ACTIVE;
-
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<CartItem> items = new ArrayList<>();
+     @Column(nullable = false, length = 20)
+     @Enumerated(EnumType.STRING)
+     @Builder.Default
+     private CartStatus status = CartStatus.ACTIVE;
+ 
+     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+     @Builder.Default
+     private List<CartItem> items = new ArrayList<>();
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -54,11 +54,9 @@ public class Cart {
 
     public void removeItem(CartItem item) {
         items.remove(item);
-        item.setCart(null);
     }
 
     public void clearItems() {
-        items.forEach(item -> item.setCart(null));
         items.clear();
     }
 

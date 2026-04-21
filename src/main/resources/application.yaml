@@ -2,6 +2,22 @@ spring:
   application:
     name: cart-service
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: cart-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.ecommerce.events
+        spring.json.use.type.headers: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    listener:
+      missing-topics-fatal: false
+
   datasource:
     url: jdbc:postgresql://localhost:5433/cart_db
     username: admin

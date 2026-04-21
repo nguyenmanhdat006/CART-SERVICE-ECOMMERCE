@@ -139,14 +139,29 @@ public class CartService {
     }
 
     public void clearCart() {
-        String userId = getCurrentUserId();
+        clearCartForUser(getCurrentUserId(), true);
+    }
+
+    public void clearCartByUserId(String userId) {
+        clearCartForUser(userId, false);
+    }
+
+    private void clearCartForUser(String userId, boolean throwIfMissing) {
         log.debug("Clearing cart for user: {}", userId);
 
         Cart cart = cartRepository.findByUserIdAndStatus(userId, Cart.CartStatus.ACTIVE)
-                .orElseThrow(() -> new ResourceNotFoundException("Active cart not found for user"));
+                .orElse(null);
 
-        cart.clearItems();
-        cartRepository.save(cart);
+        if (cart == null) {
+            if (throwIfMissing) {
+                throw new ResourceNotFoundException("Active cart not found for user");
+            }
+
+            log.warn("Active cart not found for user: {}", userId);
+            return;
+        }
+
+        cartItemService.deleteCartItemsByCartId(cart.getId());
 
     }
 
