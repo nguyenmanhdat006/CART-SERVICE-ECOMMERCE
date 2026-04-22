@@ -1,9 +1,11 @@
 spring:
   application:
     name: cart-service
+  config:
+    import: optional:file:.env[.properties]
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: cart-service-group
       auto-offset-reset: earliest
@@ -19,9 +21,9 @@ spring:
       missing-topics-fatal: false
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/cart_db
-    username: admin
-    password: password
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/cart_db}
+    username: ${DB_USERNAME:admin}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -42,11 +44,11 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/ecommerce
-          jwk-set-uri: http://localhost:8180/realms/ecommerce/protocol/openid-connect/certs
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8180/realms/ecommerce}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8180/realms/ecommerce/protocol/openid-connect/certs}
 
 server:
-  port: 8083
+  port: ${SERVER_PORT:8083}
   servlet:
     context-path: /
 
@@ -67,7 +69,7 @@ springdoc:
 # Service URLs
 services:
   product-service:
-    url: http://localhost:8082
+    url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
 
 # Cart Configuration
 cart:
